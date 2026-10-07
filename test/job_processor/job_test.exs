@@ -1,6 +1,8 @@
 defmodule JobProcessor.JobTest do
   use ExUnit.Case, async: true
 
+  doctest JobProcessor.Job
+
   alias JobProcessor.{Job, JobTask}
 
   defp errors(params) do

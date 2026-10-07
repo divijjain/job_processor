@@ -1,4 +1,20 @@
 defmodule JobProcessor.Job do
+  @moduledoc """
+  A job: the request body, parsed and validated into a list of `JobProcessor.JobTask`s.
+
+  An embedded schema (no database); Ecto changesets are used only for casting and
+  validation. Each task is checked on its own by `JobProcessor.JobTask`; this module adds
+  the rules that need every task at once:
+
+    * `tasks` must be present
+    * task names must be unique
+    * every name in `requires` must be the name of a task in the job
+
+  Errors are attached to the task (and field) that caused them, so
+  `Ecto.Changeset.traverse_errors/2` gives one entry per task, by position.
+
+  Dependency cycles are not detected here; `JobProcessor.Sorter` finds them.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -11,6 +27,22 @@ defmodule JobProcessor.Job do
 
   @type t :: %__MODULE__{tasks: [JobTask.t()]}
 
+  @doc """
+  Parses and validates request params into a job.
+
+  Accepts string or atom keys. Anything other than a map is rejected with an error on
+  `:body`.
+
+  ## Examples
+
+      iex> {:ok, job} = JobProcessor.Job.parse(%{"tasks" => [%{"name" => "a", "command" => "echo a"}]})
+      iex> job.tasks
+      [%JobProcessor.JobTask{name: "a", command: "echo a", requires: []}]
+
+      iex> {:error, changeset} = JobProcessor.Job.parse(%{})
+      iex> changeset.errors
+      [tasks: {"can't be blank", []}]
+  """
   @spec parse(term()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}
   def parse(params) when is_map(params) do
     %__MODULE__{}
